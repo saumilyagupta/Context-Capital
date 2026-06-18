@@ -54,7 +54,9 @@ def evaluate(text: str, mode: SanitizationMode = SanitizationMode.WRAP) -> Sanit
     raise ValueError(f"Unknown sanitization mode: {mode}")
 
 
-def sanitize_memory(memory: dict[str, Any], mode: SanitizationMode = SanitizationMode.WRAP) -> dict[str, Any] | None:
+def sanitize_memory(
+    memory: dict[str, Any], mode: SanitizationMode = SanitizationMode.WRAP
+) -> dict[str, Any] | None:
     out = {**memory}
     fired_all: list[str] = []
 
@@ -74,7 +76,8 @@ def sanitize_memory(memory: dict[str, Any], mode: SanitizationMode = Sanitizatio
         prov["raw_excerpt"] = ev.clean_text
         fired_all.extend(ev.patterns_fired)
 
-    prov["imported"] = True  # spec §11.1.2 — importer forces this regardless of what the doc claimed
+    # spec §11.1.2 — importer forces this regardless of what the doc claimed
+    prov["imported"] = True
     if fired_all:
         prov["sanitization_trace"] = sorted(set(fired_all))
     out["provenance"] = prov
