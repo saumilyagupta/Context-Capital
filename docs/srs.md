@@ -9,7 +9,7 @@
 | **Scope** | Phase 1 reference client + open Context Protocol v0.1 spec |
 | **Owner** | Engineering Lead (TBD) |
 | **Parent design** | [`superpowers/specs/2026-06-18-context-capital-build-pack-design.md`](superpowers/specs/2026-06-18-context-capital-build-pack-design.md) |
-| **Parent product docs** | [`../proposal-v2.md`](../proposal-v2.md), [`../market-research.md`](../market-research.md) |
+| **Parent product docs** | [`proposal-v2.md`](proposal-v2.md), [`market-research.md`](market-research.md) |
 
 ---
 
@@ -51,8 +51,8 @@ Phase 1 is the smallest viable artifact that proves the thesis: a user can captu
 
 ### 1.4 References
 - [Build-pack design spec](superpowers/specs/2026-06-18-context-capital-build-pack-design.md) — locks scope, stack, doc bundle.
-- [`proposal-v2.md`](../proposal-v2.md) — product strategy and architecture overview.
-- [`market-research.md`](../market-research.md) — competitive landscape and adoption analogs.
+- [`proposal-v2.md`](proposal-v2.md) — product strategy and architecture overview.
+- [`market-research.md`](market-research.md) — competitive landscape and adoption analogs.
 - RFC 2119 / RFC 8174 — keyword normativity.
 - JSON Schema 2020-12, JSON-LD 1.1, RFC 8032 (Ed25519).
 - MCP 2026 roadmap (`blog.modelcontextprotocol.io/posts/2026-mcp-roadmap`).

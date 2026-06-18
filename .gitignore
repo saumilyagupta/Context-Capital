@@ -38,3 +38,6 @@ Thumbs.db
 # Project-local
 *.db
 *.db-journal
+
+# Claude Code per-user settings (local, never commit)
+.claude/

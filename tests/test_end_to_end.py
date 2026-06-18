@@ -2,17 +2,14 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
-from datetime import timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import nacl.signing
 
-from context_capital.crypto import sign_document
-from context_capital.crypto import verify_document
+from context_capital.crypto import sign_document, verify_document
 from context_capital.extract import extract_mock_memories
-from context_capital.sanitize import SanitizationMode
-from context_capital.sanitize import sanitize_memory
+from context_capital.sanitize import SanitizationMode, sanitize_memory
 from context_capital.storage import Store
 
 SUBJECT = "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"

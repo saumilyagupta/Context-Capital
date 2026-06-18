@@ -11,9 +11,9 @@ If a future session adds code, the planned stack is: **TypeScript + React + Vite
 ## Document tree (orient here first)
 
 ```
-intial-praposal.md         original draft (kept for history; superseded by proposal-v2.md)
-proposal-v2.md             current product strategy — start here
-market-research.md         33-source competitive + adoption research backing proposal-v2
+docs/intial-praposal.md         original draft (kept for history; superseded by docs/proposal-v2.md)
+docs/proposal-v2.md             current product strategy — start here
+docs/market-research.md         33-source competitive + adoption research backing proposal-v2
 docs/
 ├── superpowers/specs/2026-06-18-context-capital-build-pack-design.md   spec-of-specs (locks scope, stack, doc list)
 ├── srs.md                 requirements (F-1..F-9, NFR-*, success criteria G-*/Q-*/P-*)
@@ -31,14 +31,14 @@ docs/
 └── adr/                   MADR 3.0 — template + ADR-001..008 for load-bearing decisions
 ```
 
-**Reading order for a fresh contributor:** `proposal-v2.md` → `market-research.md` → `docs/superpowers/specs/2026-06-18-…-design.md` → `docs/srs.md` → `docs/sdd.md` → ADRs → the rest.
+**Reading order for a fresh contributor:** `docs/proposal-v2.md` → `docs/market-research.md` → `docs/superpowers/specs/2026-06-18-…-design.md` → `docs/srs.md` → `docs/sdd.md` → ADRs → the rest.
 
 ## Strategic facts to keep in mind
 
-- **Plurality Network is a direct, shipping competitor** on the original "Open Context Layer" thesis (London, ~3 employees, Outlier Ventures / Futureverse seed, TEE encryption, $10/$20 mo). Proposal-v2 pivoted away from that lane toward **enterprise + open spec**. Do not write copy that re-enters Plurality's positioning. See `proposal-v2.md` §2 and `market-research.md` §2.2.
+- **Plurality Network is a direct, shipping competitor** on the original "Open Context Layer" thesis (London, ~3 employees, Outlier Ventures / Futureverse seed, TEE encryption, $10/$20 mo). Proposal-v2 pivoted away from that lane toward **enterprise + open spec**. Do not write copy that re-enters Plurality's positioning. See `docs/proposal-v2.md` §2 and `docs/market-research.md` §2.2.
 - **Phase-1 scope is locked at one specific slice:** open Context Protocol v0.1 + Chrome extension + local MCP server + capture from ChatGPT and Claude only. Anything broader (Gemini, Copilot, hosted SaaS, enterprise tier) is Phase 2/3 and out-of-scope for the current docs.
 - **Four v2-only architecture pieces** (added during the deep-research-driven revision; don't drop them):
-  1. Prompt-injection sanitization on import (`proposal-v2.md` §4.1, threat model §3 — the headline differentiator).
+  1. Prompt-injection sanitization on import (`docs/proposal-v2.md` §4.1, threat model §3 — the headline differentiator).
   2. Published open Context Protocol schema (`spec/context-protocol-v0.1.md`).
   3. Conflict resolution / diff tools (ADR-008 — surface-only, never last-write-wins).
   4. Vendor provenance tagging on every memory.
@@ -56,7 +56,7 @@ docs/
 
 ## Open questions carried forward
 
-These are explicitly unresolved; touch them with care. Sources: `proposal-v2.md` §11, `market-research.md` §9, `docs/superpowers/specs/2026-06-18-…-design.md` §11.
+These are explicitly unresolved; touch them with care. Sources: `docs/proposal-v2.md` §11, `docs/market-research.md` §9, `docs/superpowers/specs/2026-06-18-…-design.md` §11.
 
 1. Plurality's exact technical export schema — direct technical due diligence still needed before any "first published spec" claim.
 2. ~30 named competitors (Mem0, Zep, Letta, Cognee, vendor-native ChatGPT/Claude/Gemini memory features, Rewind, Saga, Mem.ai, etc.) were named but not verified in Phase-1 research.
