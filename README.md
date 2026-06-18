@@ -168,6 +168,20 @@ Quit and relaunch Claude Desktop — the tool surfaces in the app's MCP picker.
 
 ## 🏗️ Architecture & Request Lifecycle
 
+```mermaid
+flowchart TD
+    A[💬 Your AI chats<br/>ChatGPT • Claude • …] -->|cc extract| B[Memory Extraction]
+    B --> C[(🔐 Local Encrypted Store<br/>SQLite + your Ed25519 key)]
+    C -->|cc export| D[📦 Signed context.json<br/>Ed25519 + JCS]
+    D -.->|share / sync| E[Another machine<br/>or compliant tool]
+    E -->|cc import| F{Signature<br/>valid?}
+    F -- ❌ no --> G[Refused<br/>no side effects]
+    F -- ✅ yes --> H[🛡️ Sanitize<br/>prompt-injection scrub]
+    H --> C
+    C -->|cc serve · MCP stdio| J[🤖 MCP Clients<br/>Claude Code · Claude Desktop · Cursor]
+    J -.->|query_memories<br/>subject_summary| C
+```
+
 1. **Init:** `cc init` generates an Ed25519 signing keypair → derives a `did:key` subject → writes both to `~/.context-capital/` (mode `0600` on the key).
 2. **Extract:** `cc extract` runs raw text through the extraction pipeline, producing structured memories with `kind`, `predicate`, `object`, `confidence`, and `provenance`. IDs are content-addressed for deterministic dedup.
 3. **Store:** Memories land in a local SQLite store. Every write produces an append-only audit entry recording the `memory_id` and actor — **never** the raw memory text (FR-9.6).
