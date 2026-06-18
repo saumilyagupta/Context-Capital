@@ -1,5 +1,6 @@
 """Embedded JSON Schema 2020-12 for Context Protocol v0.1 — spec §6."""
 from __future__ import annotations
+
 from typing import Any
 
 CONTEXT_PROTOCOL_V0_1_SCHEMA: dict[str, Any] = {
