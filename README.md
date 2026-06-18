@@ -40,7 +40,7 @@ Context Capital is more than a memory store — it's a complete trust boundary f
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/context-capital.git
+git clone https://github.com/saumilyagupta/Context-Capital.git
 cd context-capital
 ```
 
