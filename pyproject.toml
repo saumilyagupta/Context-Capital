@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "context-capital"
+version = "0.1.0"
+description = "Phase-1 reference client for the Context Protocol — user-owned, cross-vendor AI memory portability."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Context Capital project" }]
+keywords = ["ai", "memory", "mcp", "context-protocol", "portability"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Security :: Cryptography",
+]
+
+dependencies = [
+    "pydantic>=2.7",
+    "jsonschema>=4.22",
+    "rfc8785>=0.1.4",
+    "pynacl>=1.5",
+    "argon2-cffi>=23.1",
+    "typer>=0.12",
+    "rich>=13.7",
+    "mcp>=1.0",
+    "anyio>=4.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.100",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "coverage>=7.5",
+]
+
+[project.scripts]
+cc = "context_capital.cli:app"
+
+[project.urls]
+Homepage  = "https://example.invalid/context-capital"
+Spec      = "https://example.invalid/context-protocol-v0.1"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/context_capital"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ANN"]
+ignore = ["ANN101", "ANN102", "S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra -q --strict-markers"
+
+[tool.coverage.run]
+source = ["src/context_capital"]
+branch = true
