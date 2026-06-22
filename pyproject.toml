@@ -23,6 +23,7 @@ dependencies = [
     "jsonschema>=4.22",
     "rfc8785>=0.1.4",
     "ijson>=3.3",
+    "litellm>=1.50",
     "pynacl>=1.5",
     "argon2-cffi>=23.1",
     "typer>=0.12",
@@ -76,6 +77,8 @@ ignore = ["ANN101", "ANN102", "S101", "UP017"]
 # anonymize_export.py: _walk() accepts Any to traverse arbitrary JSON structures.
 # S311: random.Random is used for deterministic anonymization (not crypto).
 "tools/anonymize_export.py" = ["ANN401", "S311"]
+# llm.py: EXTRACTION_SYSTEM_PROMPT docstring contains multi-line formatted rules/guidelines.
+"src/context_capital/extract/llm.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
