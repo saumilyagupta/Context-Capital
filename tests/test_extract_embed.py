@@ -56,6 +56,15 @@ def test_embed_text_no_data_returns_none():
         assert embed_mod.embed_text("x") is None
 
 
+def test_embed_text_none_embedding_value_returns_none():
+    from context_capital.extract import embed as embed_mod
+    with patch.object(
+        embed_mod, "litellm",
+        embedding=lambda **_: {"data": [{"embedding": None}]},
+    ):
+        assert embed_mod.embed_text("hello") is None
+
+
 def test_memory_to_text_includes_predicate_value_and_excerpt():
     from context_capital.extract.embed import memory_to_text
     mem = {
