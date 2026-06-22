@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -221,3 +222,185 @@ def verify_audit_cmd() -> None:
         return
     for e in entries:
         rprint(f"  {e['at']}  {e['actor']:12}  {e['action']:20}  {e['outcome']}")
+
+
+@app.command()
+def migrate(  # noqa: B008
+    to: str = typer.Option(..., "--to", help="Target backend (only 'postgres' supported)."),
+    source: Path | None = typer.Option(None, "--source", help="Source SQLite path."),  # noqa: B008
+    target: str | None = typer.Option(None, "--target", help="Target Postgres URL."),
+    with_embeddings: bool = typer.Option(False, "--with-embeddings/--no-embeddings"),
+    force: bool = typer.Option(False, "--force", help="Bypass cross-subject safety check."),
+) -> None:
+    """One-way migrate a SQLite store into a Postgres database (idempotent)."""
+    if to != "postgres":
+        raise typer.BadParameter("Only --to postgres is supported.")
+    src_path = source if source is not None else _store_path()
+    if not src_path.exists():
+        raise typer.BadParameter(f"source not found: {src_path}")
+    tgt_url = target or os.environ.get("CC_DATABASE_URL")
+    if not tgt_url:
+        raise typer.BadParameter("Set --target or CC_DATABASE_URL.")
+
+    from context_capital.extract.embed import (  # noqa: PLC0415
+        DEFAULT_EMBED_MODEL,
+        embed_text,
+        memory_to_text,
+    )
+    from context_capital.storage.postgres import PostgresStore  # noqa: PLC0415
+    from context_capital.storage.sqlite import SQLiteStore  # noqa: PLC0415
+
+    moved_subjects = moved_contexts = moved_messages = moved_memories = moved_embeddings = 0
+
+    _src = SQLiteStore(src_path)
+    _dst = PostgresStore(tgt_url)
+    with _src, _dst:
+        src_conn = _src._require_conn()  # noqa: SLF001
+        dst_conn = _dst._require_conn()  # noqa: SLF001
+
+        # Safety check.
+        src_subject_ids = {
+            r["id"] for r in src_conn.execute("SELECT id FROM subjects").fetchall()
+        }
+        with dst_conn.cursor() as cur:
+            cur.execute("SELECT id FROM subjects")
+            dst_subject_ids = {r["id"] for r in cur.fetchall()}
+        if dst_subject_ids and not (src_subject_ids & dst_subject_ids) and not force:
+            raise typer.BadParameter(
+                f"target already has {len(dst_subject_ids)} subject(s) with no overlap to "
+                f"source's {len(src_subject_ids)}. Use --force to override."
+            )
+
+        # 1) subjects
+        for r in src_conn.execute("SELECT id, type, display_name FROM subjects").fetchall():
+            with dst_conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO subjects (id, type, display_name) VALUES (%s, %s, %s) "
+                    "ON CONFLICT (id) DO NOTHING",
+                    (r["id"], r["type"], r["display_name"]),
+                )
+                moved_subjects += max(cur.rowcount, 0)
+
+        # 2) contexts
+        for r in src_conn.execute(
+            "SELECT id, subject_id, source_vendor, source_file_hash,"
+            " vendor_conversation_id, title, captured_at FROM contexts"
+        ).fetchall():
+            with dst_conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO contexts (id, subject_id, source_vendor, source_file_hash,"
+                    " vendor_conversation_id, title, captured_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+                    (r["id"], r["subject_id"], r["source_vendor"], r["source_file_hash"],
+                     r["vendor_conversation_id"], r["title"], r["captured_at"]),
+                )
+                moved_contexts += max(cur.rowcount, 0)
+
+        # 3) raw_messages
+        for r in src_conn.execute(
+            "SELECT context_id, seq, role, content, created_at, vendor_message_id"
+            " FROM raw_messages ORDER BY context_id, seq"
+        ).fetchall():
+            with dst_conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO raw_messages"
+                    " (context_id, seq, role, content, created_at, vendor_message_id) "
+                    "VALUES (%s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (context_id, seq) DO NOTHING",
+                    (r["context_id"], r["seq"], r["role"], r["content"],
+                     r["created_at"], r["vendor_message_id"]),
+                )
+                moved_messages += max(cur.rowcount, 0)
+
+        # 4) memories
+        memory_ids_inserted: list[str] = []
+        for r in src_conn.execute(
+            "SELECT id, subject_id, kind, predicate, object_value, object_type,"
+            " confidence, sensitivity FROM memories"
+        ).fetchall():
+            with dst_conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO memories (id, subject_id, kind, predicate, object_value,"
+                    " object_type, confidence, sensitivity) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (id) DO NOTHING",
+                    (r["id"], r["subject_id"], r["kind"], r["predicate"],
+                     r["object_value"], r["object_type"], float(r["confidence"]),
+                     r["sensitivity"]),
+                )
+                if cur.rowcount > 0:
+                    memory_ids_inserted.append(r["id"])
+                    moved_memories += 1
+
+        # 5) provenance
+        for r in src_conn.execute(
+            "SELECT memory_id, source, extracted_at, raw_excerpt, imported,"
+            " import_source, model, sanitization_trace FROM provenance"
+        ).fetchall():
+            with dst_conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO provenance (memory_id, source, extracted_at, raw_excerpt,"
+                    " imported, import_source, model, sanitization_trace) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (memory_id) DO NOTHING",
+                    (r["memory_id"], r["source"], r["extracted_at"], r["raw_excerpt"],
+                     bool(r["imported"]), r["import_source"], r["model"],
+                     r["sanitization_trace"]),
+                )
+
+        # 6) audit log (append; no natural dedup key)
+        for r in src_conn.execute(
+            "SELECT at, actor, action, subject_id, details, outcome FROM audit_log_entries"
+            " ORDER BY id"
+        ).fetchall():
+            with dst_conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO audit_log_entries"
+                    " (at, actor, action, subject_id, details, outcome)"
+                    " VALUES (%s, %s, %s, %s, %s::jsonb, %s)",
+                    (r["at"], r["actor"], r["action"], r["subject_id"],
+                     r["details"] or "{}", r["outcome"]),
+                )
+
+        dst_conn.commit()
+
+        # 7) Optional embeddings (best-effort, runs after main commit)
+        if with_embeddings and memory_ids_inserted:
+            for mem_id in memory_ids_inserted:
+                m = _dst.get_memory(mem_id)
+                if not m:
+                    continue
+                vec = embed_text(memory_to_text(m), model=DEFAULT_EMBED_MODEL)
+                if vec is None:
+                    continue
+                try:
+                    _dst.add_embedding(mem_id, vec, model=DEFAULT_EMBED_MODEL)
+                    moved_embeddings += 1
+                except Exception as e:  # noqa: BLE001
+                    rprint(f"[yellow]embed failed for {mem_id}: {e}[/yellow]")
+
+        # 8) Final summary audit entry on the target.
+        with dst_conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO audit_log_entries"
+                " (actor, action, subject_id, details, outcome)"
+                " VALUES (%s, %s, %s, %s::jsonb, %s)",
+                (
+                    "cli:migrate", "extract:done", None,
+                    json.dumps({
+                        "source": str(src_path),
+                        "subjects": moved_subjects,
+                        "contexts": moved_contexts,
+                        "raw_messages": moved_messages,
+                        "memories": moved_memories,
+                        "embeddings": moved_embeddings,
+                    }),
+                    "success",
+                ),
+            )
+        dst_conn.commit()
+
+    rprint(
+        f"[green]Migrated[/green]: {moved_subjects} subjects, {moved_contexts} contexts, "
+        f"{moved_messages} messages, {moved_memories} memories, {moved_embeddings} embeddings."
+    )
