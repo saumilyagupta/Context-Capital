@@ -73,6 +73,9 @@ ignore = ["ANN101", "ANN102", "S101", "UP017"]
 "src/context_capital/ingest/chatgpt.py" = ["ANN401"]
 # claude.py: same pattern as chatgpt.py — untyped JSON dicts with Any defensively used.
 "src/context_capital/ingest/claude.py" = ["ANN401"]
+# anonymize_export.py: _walk() accepts Any to traverse arbitrary JSON structures.
+# S311: random.Random is used for deterministic anonymization (not crypto).
+"tools/anonymize_export.py" = ["ANN401", "S311"]
 
 [tool.mypy]
 python_version = "3.12"
