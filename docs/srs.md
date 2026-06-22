@@ -356,7 +356,7 @@ Each feature lists: description, priority (P0 / P1 / P2), stimulus → response,
 Phase 1 ships when **all** of the following are demonstrably true:
 
 ### 7.1 Functional acceptance
-- [ ] **G-1 Round-trip.** A real ChatGPT export AND a real Claude export, each ≥ 200 conversations, capture → extract → export → import-into-clean-instance → verify with no memory loss, no schema errors, no signature failures.
+- [ ] **G-1 Round-trip.** A real ChatGPT export AND a real Claude export, each ≥ 200 conversations, capture → extract → export → import-into-clean-instance → verify with no memory loss, no schema errors, no signature failures. (Pipeline shipped 2026-06-22; awaiting first real ≥200-conversation export to flip to ✅)
 - [ ] **G-2 Sanitization.** The adversarial test corpus of ≥ 20 prompt-injection-via-import payloads (see threat model) MUST be blocked or neutralized; success rate = 100%.
 - [ ] **G-3 MCP integration.** Claude Desktop, configured against the local MCP server, can answer "what do you know about me?" using memories surfaced via `subject_summary://current` and `query_memories`.
 - [ ] **G-4 Conformance.** A second external implementation (even a minimal one — could be a script) passes the conformance suite against an exported Phase-1 `context.json`.

@@ -101,8 +101,10 @@ pytest -q              # full suite, sub-second
 ## ⚡ Quickstart
 
 ```bash
-# Extract memories from text
-cc extract --text "I prefer PyTorch for ML. My Drone project is written in Python."
+# Capture from a real ChatGPT or Claude export (preferred)
+cc capture --vendor chatgpt --file ~/Downloads/conversations.json
+# Or for quick offline iteration without an LLM:
+cc capture --vendor chatgpt --file ~/Downloads/conversations.json --mock
 
 # Inspect what's stored
 cc list
