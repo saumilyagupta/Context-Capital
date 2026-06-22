@@ -20,8 +20,8 @@ def Store(db_url: str | Path | None = None) -> StoreBase:
     """
     resolved = db_url if db_url is not None else resolve_database_url()
     if isinstance(resolved, str) and resolved.startswith(("postgresql://", "postgres://")):
-        from context_capital.storage.postgres import PostgresStore  # type: ignore[import-untyped]
-        return PostgresStore(resolved)  # type: ignore[no-any-return]
+        from context_capital.storage.postgres import PostgresStore
+        return PostgresStore(resolved)
     from context_capital.storage.sqlite import SQLiteStore
     path = resolved if isinstance(resolved, Path) else Path(resolved)
     return SQLiteStore(path)
