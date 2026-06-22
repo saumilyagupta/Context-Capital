@@ -5,7 +5,10 @@ import json
 import sqlite3
 from pathlib import Path
 from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from context_capital.ingest.types import IngestContext
 
 SCHEMA_DDL = """
 CREATE TABLE IF NOT EXISTS subjects (
@@ -49,6 +52,30 @@ CREATE TABLE IF NOT EXISTS audit_log_entries (
     details TEXT NOT NULL DEFAULT '{}',
     outcome TEXT NOT NULL CHECK (outcome IN ('success','denied','error'))
 );
+
+CREATE TABLE IF NOT EXISTS contexts (
+    id TEXT PRIMARY KEY,
+    subject_id TEXT NOT NULL REFERENCES subjects(id),
+    source_vendor TEXT NOT NULL,
+    source_file_hash TEXT NOT NULL,
+    vendor_conversation_id TEXT NOT NULL,
+    title TEXT,
+    captured_at TEXT NOT NULL,
+    UNIQUE (subject_id, source_file_hash, vendor_conversation_id)
+);
+CREATE INDEX IF NOT EXISTS contexts_subject_idx ON contexts (subject_id);
+
+CREATE TABLE IF NOT EXISTS raw_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    context_id TEXT NOT NULL REFERENCES contexts(id) ON DELETE CASCADE,
+    seq INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT,
+    vendor_message_id TEXT,
+    UNIQUE (context_id, seq)
+);
+CREATE INDEX IF NOT EXISTS raw_messages_context_idx ON raw_messages (context_id);
 """
 
 
@@ -218,3 +245,88 @@ class Store:
             "SELECT * FROM audit_log_entries ORDER BY id DESC LIMIT ?", (limit,)
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def persist_ingest_context(
+        self,
+        ic: IngestContext,
+        *,
+        subject_id: str,
+        actor: str = "system",
+    ) -> str:
+        """Persist an IngestContext + its messages. Idempotent on
+        (subject_id, source_file_hash, vendor_conversation_id). Returns the
+        context UUID (existing one if duplicate).
+        """
+        import uuid as _uuid
+
+        c = self._require_conn()
+        existing = c.execute(
+            "SELECT id FROM contexts WHERE subject_id = ? AND source_file_hash = ? "
+            "AND vendor_conversation_id = ?",
+            (subject_id, ic.source_file_hash, ic.vendor_conversation_id),
+        ).fetchone()
+        if existing is not None:
+            return str(existing["id"])
+        cid = str(_uuid.uuid4())
+        with c:
+            c.execute(
+                """INSERT INTO contexts (id, subject_id, source_vendor, source_file_hash,
+                                          vendor_conversation_id, title, captured_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    cid,
+                    subject_id,
+                    ic.vendor,
+                    ic.source_file_hash,
+                    ic.vendor_conversation_id,
+                    ic.title,
+                    ic.captured_at.isoformat(),
+                ),
+            )
+            for m in ic.messages:
+                c.execute(
+                    """INSERT INTO raw_messages
+                           (context_id, seq, role, content, created_at, vendor_message_id)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        cid,
+                        m.seq,
+                        str(m.role),
+                        m.content,
+                        m.created_at.isoformat() if m.created_at else None,
+                        m.vendor_message_id,
+                    ),
+                )
+            c.execute(
+                "INSERT INTO audit_log_entries (actor, action, subject_id, details, outcome) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    actor,
+                    "capture",
+                    subject_id,
+                    json.dumps(
+                        {
+                            "context_id": cid,
+                            "vendor": ic.vendor,
+                            "vendor_conversation_id": ic.vendor_conversation_id,
+                            "messages": len(ic.messages),
+                        }
+                    ),
+                    "success",
+                ),
+            )
+        return cid
+
+    def get_context_by_unique(
+        self,
+        subject_id: str,
+        source_file_hash: str,
+        vendor_conversation_id: str,
+    ) -> dict[str, Any] | None:
+        c = self._require_conn()
+        row = c.execute(
+            "SELECT * FROM contexts WHERE subject_id = ? AND source_file_hash = ? "
+            "AND vendor_conversation_id = ?",
+            (subject_id, source_file_hash, vendor_conversation_id),
+        ).fetchone()
+        return dict(row) if row else None
