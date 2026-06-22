@@ -10,6 +10,8 @@ import psycopg
 from pgvector.psycopg import register_vector
 from psycopg.rows import dict_row
 
+from context_capital.extract import embed as embed_mod
+from context_capital.extract.embed import DEFAULT_EMBED_MODEL, memory_to_text
 from context_capital.storage.base import StoreBase
 
 if TYPE_CHECKING:
@@ -213,6 +215,17 @@ class PostgresStore(StoreBase):
             c.rollback()
             raise
 
+        # Best-effort: compute + store the embedding. Failure does NOT roll back the memory.
+        try:
+            text = memory_to_text(memory)
+            vec = embed_mod.embed_text(text, model=DEFAULT_EMBED_MODEL)
+            if vec is not None:
+                self.add_embedding(memory["id"], vec, model=DEFAULT_EMBED_MODEL)
+            else:
+                logger.info("no embedding written for %s (embed_text returned None)", memory["id"])
+        except Exception as e:  # noqa: BLE001 — best-effort
+            logger.warning("embedding step failed for %s: %s", memory["id"], e)
+
     def list_memories(
         self,
         *,
@@ -365,6 +378,72 @@ class PostgresStore(StoreBase):
             )
             row = cur.fetchone()
         return dict(row) if row else None
+
+    # ---- Embeddings + semantic search ------------------------------------
+    def supports_embeddings(self) -> bool:
+        return True
+
+    def add_embedding(
+        self,
+        memory_id: str,
+        vector: list[float],
+        *,
+        model: str,
+    ) -> None:
+        if len(vector) != self.embed_dim:
+            raise ValueError(
+                f"embedding dim {len(vector)} does not match column vector({self.embed_dim}); "
+                "set CC_EMBED_MODEL to a matching-dim model or migrate the schema"
+            )
+        c = self._require_conn()
+        with c.cursor() as cur:
+            cur.execute(
+                "INSERT INTO vector_embeddings (memory_id, model, embedding)"
+                " VALUES (%s, %s, %s)"
+                " ON CONFLICT (memory_id, model) DO UPDATE SET"
+                "  embedding = EXCLUDED.embedding, created_at = now()",
+                (memory_id, model, vector),
+            )
+        c.commit()
+
+    def search_by_embedding(
+        self,
+        vector: list[float],
+        *,
+        limit: int = 10,
+        subject_id: str | None = None,
+        kind: str | None = None,
+        sensitivity: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        if len(vector) != self.embed_dim:
+            raise ValueError(
+                f"query embedding dim {len(vector)} != column dim {self.embed_dim}"
+            )
+        q = (
+            "SELECT m.*, p.source, p.extracted_at, p.raw_excerpt,"
+            " p.imported, p.import_source, p.model"
+            " FROM memories m"
+            " JOIN vector_embeddings v ON v.memory_id = m.id"
+            " LEFT JOIN provenance p ON p.memory_id = m.id"
+            " WHERE TRUE"
+        )
+        params: list[Any] = []
+        if subject_id is not None:
+            q += " AND m.subject_id = %s"
+            params.append(subject_id)
+        if kind is not None:
+            q += " AND m.kind = %s"
+            params.append(kind)
+        if sensitivity:
+            q += " AND m.sensitivity = ANY(%s)"
+            params.append(list(sensitivity))
+        q += " ORDER BY v.embedding <=> %s::vector LIMIT %s"
+        params.extend([vector, int(limit)])
+        c = self._require_conn()
+        with c.cursor() as cur:
+            cur.execute(q, params)
+            rows = cur.fetchall()
+        return [self._row_to_memory(r) for r in rows]
 
     # ---- Audit ------------------------------------------------------------
     def audit_log(self, limit: int = 100) -> list[dict[str, Any]]:
