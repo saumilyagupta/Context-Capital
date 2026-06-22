@@ -1,0 +1,36 @@
+[
+  {
+    "uuid": "conv_xyz789",
+    "name": "Project planning",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:30:00Z",
+    "chat_messages": [
+      {
+        "uuid": "msg-uuid-1",
+        "sender": "human",
+        "created_at": "2025-01-01T00:01:00Z",
+        "text": "I prefer PyTorch for ML.",
+        "content": [
+          {"type": "text", "text": "I prefer PyTorch for ML."}
+        ]
+      },
+      {
+        "uuid": "msg-uuid-2",
+        "sender": "assistant",
+        "created_at": "2025-01-01T00:01:05Z",
+        "text": "Got it!",
+        "content": [
+          {"type": "text", "text": "Got it!"},
+          {"type": "tool_use", "name": "web_search"}
+        ]
+      },
+      {
+        "uuid": "msg-uuid-3",
+        "sender": "human",
+        "created_at": "2025-01-01T00:02:00Z",
+        "text": "",
+        "content": []
+      }
+    ]
+  }
+]

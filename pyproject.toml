@@ -71,6 +71,8 @@ ignore = ["ANN101", "ANN102", "S101", "UP017"]
 # chatgpt.py: vendor export is untyped JSON dicts; we use Any to parse
 # heterogeneous nested structures defensively (role inference, message extraction).
 "src/context_capital/ingest/chatgpt.py" = ["ANN401"]
+# claude.py: same pattern as chatgpt.py — untyped JSON dicts with Any defensively used.
+"src/context_capital/ingest/claude.py" = ["ANN401"]
 
 [tool.mypy]
 python_version = "3.12"
