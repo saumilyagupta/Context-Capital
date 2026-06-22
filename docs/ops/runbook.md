@@ -256,7 +256,22 @@ $ cc nuke --yes-i-mean-it
 | Re-extract a capture | `cc extract --capture-id <id> --force` |
 | Vacuum Postgres | `psql -c 'VACUUM ANALYZE;'` |
 
-## 11. References
+## 11. Switching to Postgres / Supabase
+
+1. Provision a Postgres database with the `vector` extension (Supabase: enabled by default).
+2. Export `CC_DATABASE_URL=postgresql://...` or write it to `~/.context-capital/config.toml`:
+
+   ```toml
+   [storage]
+   database_url = "postgresql://..."
+   ```
+
+3. Run `cc migrate --to postgres --with-embeddings` to copy an existing SQLite store across.
+4. Verify with `cc list` and `cc memories search "test query"`.
+
+**PgBouncer note:** Supabase's pooler at `*.pooler.supabase.com:6543` defaults to *transaction* mode, which is incompatible with psycopg3's prepared statements. Use either the direct connection (`db.PROJECT.supabase.co:5432`) or set the pooler to *session* mode.
+
+## 12. References
 
 - [`../sdd.md`](../sdd.md) §5 (deployment topology), §7 (observability).
 - [`../api/README.md`](../api/README.md) §2 (auth model).

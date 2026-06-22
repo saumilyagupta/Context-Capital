@@ -121,6 +121,34 @@ cc verify-audit
 
 That's the local round-trip. To expose memories to AI tools, wire up the MCP server below.
 
+### Using Postgres / Supabase
+
+Context Capital uses SQLite by default. To use any Postgres database with the `pgvector` extension enabled (Supabase, self-hosted, RDS, etc.), set `CC_DATABASE_URL`:
+
+```bash
+# Supabase
+export CC_DATABASE_URL='postgresql://user:pass@db.PROJECT.supabase.co:5432/postgres'
+
+# Or self-hosted
+export CC_DATABASE_URL='postgresql://user:pass@localhost:5432/cc'
+
+cc capture --vendor chatgpt --file conversations.json
+cc memories search "what languages do I prefer"
+```
+
+To move an existing local SQLite store into a Postgres database:
+
+```bash
+cc migrate --to postgres \
+  --source ~/.context-capital/store.db \
+  --target "$CC_DATABASE_URL" \
+  --with-embeddings
+```
+
+Migration is idempotent — re-running picks up where it left off via `ON CONFLICT DO NOTHING`.
+
+**Note:** with the Postgres backend, every new memory gets an embedding (default model: `voyage/voyage-3`, dim 1024) so `cc memories search` can do cosine-similarity recall. If the embedding provider is down or unconfigured, memories are still persisted; the embedding row is skipped with a log line, and you can backfill later by re-running `cc migrate --with-embeddings` against the same target.
+
 <br>
 
 ## 🔌 Connecting to Claude Code
