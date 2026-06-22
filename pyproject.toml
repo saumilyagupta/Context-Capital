@@ -68,6 +68,9 @@ ignore = ["ANN101", "ANN102", "S101", "UP017"]
 # compute_memory_id(object_value: Any) intentionally accepts any JSON value
 # (the schema's `object.value` is unconstrained).
 "src/context_capital/schema/models.py" = ["S105", "ANN401"]
+# chatgpt.py: vendor export is untyped JSON dicts; we use Any to parse
+# heterogeneous nested structures defensively (role inference, message extraction).
+"src/context_capital/ingest/chatgpt.py" = ["ANN401"]
 
 [tool.mypy]
 python_version = "3.12"
