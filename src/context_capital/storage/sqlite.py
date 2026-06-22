@@ -7,6 +7,8 @@ from pathlib import Path
 from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
+from context_capital.storage.base import StoreBase
+
 if TYPE_CHECKING:
     from context_capital.ingest.types import IngestContext
 
@@ -79,12 +81,12 @@ CREATE INDEX IF NOT EXISTS raw_messages_context_idx ON raw_messages (context_id)
 """
 
 
-class Store:
+class SQLiteStore(StoreBase):
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
         self._conn: sqlite3.Connection | None = None
 
-    def __enter__(self) -> Store:
+    def __enter__(self) -> SQLiteStore:
         self.connect()
         return self
 
@@ -330,3 +332,7 @@ class Store:
             (subject_id, source_file_hash, vendor_conversation_id),
         ).fetchone()
         return dict(row) if row else None
+
+
+# Backward-compat alias — existing code imports `Store` directly from this module.
+Store = SQLiteStore

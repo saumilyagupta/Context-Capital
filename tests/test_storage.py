@@ -106,3 +106,11 @@ def test_add_memory_writes_audit_entry_no_raw_text(
 def test_get_memory_returns_none_for_missing(temp_db_path: Path) -> None:
     with Store(temp_db_path) as store:
         assert store.get_memory("mem_" + "0" * 32) is None  # noqa: S105
+
+
+def test_sqlite_store_is_storebase_subclass() -> None:
+    from context_capital.storage.base import StoreBase
+    from context_capital.storage.sqlite import SQLiteStore, Store
+
+    assert issubclass(SQLiteStore, StoreBase)
+    assert Store is SQLiteStore  # backward-compat alias
