@@ -82,6 +82,9 @@ ignore = ["ANN101", "ANN102", "S101", "UP017"]
 "tools/anonymize_export.py" = ["ANN401", "S311"]
 # llm.py: EXTRACTION_SYSTEM_PROMPT docstring contains multi-line formatted rules/guidelines.
 "src/context_capital/extract/llm.py" = ["E501"]
+# base.py: add_embedding is a deliberate no-op default (B027); UP037 quotes are from
+# TYPE_CHECKING forward refs that become automatic strings with `from __future__ import`.
+"src/context_capital/storage/base.py" = ["B027", "UP037"]
 
 [tool.mypy]
 python_version = "3.12"
