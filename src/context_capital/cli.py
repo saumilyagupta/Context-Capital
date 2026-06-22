@@ -205,6 +205,50 @@ def import_doc(
     rprint(f"[green]Imported {imported}, sanitized {sanitized}, refused {refused}.[/green]")
 
 
+memories_app = typer.Typer(help="Memory-level operations.", no_args_is_help=True)
+app.add_typer(memories_app, name="memories")
+
+
+@memories_app.command("search")
+def memories_search(  # noqa: B008
+    query: str = typer.Argument(..., help="Search query (free text)."),
+    limit: int = typer.Option(10, "--limit", "-l"),
+    kind: str | None = typer.Option(None, "--kind", "-k"),
+    sensitivity: list[str] | None = typer.Option(None, "--sensitivity", "-s"),  # noqa: B008
+) -> None:
+    """Semantic search over stored memories (Postgres backend only)."""
+    from context_capital.config import resolve_embed_model
+    from context_capital.extract.embed import embed_text
+
+    subject_id = _load_subject_id()
+    with Store() as store:
+        if not store.supports_embeddings():
+            rprint(
+                "[red]Semantic search requires the Postgres backend.[/red]\n"
+                "Set CC_DATABASE_URL=postgresql://... and re-run."
+            )
+            raise typer.Exit(2)
+        model = resolve_embed_model()
+        vec = embed_text(query, model=model)
+        if vec is None:
+            rprint("[red]Could not embed query (embed_text returned None).[/red]")
+            raise typer.Exit(2)
+        results = store.search_by_embedding(
+            vec,
+            limit=limit,
+            subject_id=subject_id,
+            kind=kind,
+            sensitivity=sensitivity or None,
+        )
+    if not results:
+        rprint("[yellow]No matches.[/yellow]")
+        return
+    for m in results:
+        rprint(
+            f"  {m['id']}  ({m['kind']}/{m['predicate']})  -> {m['object']['value']}"
+        )
+
+
 @app.command()
 def serve() -> None:
     """Start the MCP server on stdio."""
